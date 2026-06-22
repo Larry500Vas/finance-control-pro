@@ -1,132 +1,106 @@
 import React, { useContext } from 'react';
 import { GastosContext } from '../context/GastosContext';
-import { Wallet, Landmark, Bitcoin, AlertTriangle, ArrowUpRight, ArrowDownLeft, DollarSign } from 'lucide-react';
+import { Wallet, Landmark, Percent, AlertTriangle } from 'lucide-react';
+
+// 📝 CONFIGURA AQUÍ LOS NOMBRES DE TUS BANCOS
+const BANCO_1_NOMBRE = "Banco Agrícola";
+const BANCO_2_NOMBRE = "Banco Cuscatlán";
 
 export const Dashboard = () => {
+  // Leemos el objeto billeteras directamente del contexto reactivo
   const { billeteras, transacciones, alerta, obtenerTotalComisiones } = useContext(GastosContext);
 
-  // Cálculos dinámicos en tiempo real para los indicadores superiores
-  const totalBalance = billeteras.efectivo + billeteras.banco + billeteras.chivoWallet;
-  const totalComisiones = obtenerTotalComisiones();
-  
-  const totalIngresos = transacciones
-    .filter(t => t.tipo === 'ingreso' || t.tipo === 'remesa')
-    .reduce((acc, curr) => acc + parseFloat(curr.monto), 0);
+  // Extraemos los saldos con un fallback de 0 por seguridad para que React reaccione al instante
+  const efectivo = parseFloat(billeteras?.efectivo ?? 0);
+  const banco1 = parseFloat(billeteras?.banco1 ?? 0);
+  const banco2 = parseFloat(billeteras?.banco2 ?? 0);
+  const chivoWallet = parseFloat(billeteras?.chivoWallet ?? 0);
 
-  const totalGastos = transacciones
+  // Balance global reactivo en tiempo real
+  const totalGlobal = efectivo + banco1 + banco2 + chivoWallet;
+
+  // Filtro exacto de gastos acumulados mapeado directamente del arreglo de transacciones activo
+  const totalGastosAcumulados = transacciones
     .filter(t => t.tipo === 'gasto' || t.tipo === 'envio_remesa')
-    .reduce((acc, curr) => acc + parseFloat(curr.monto), 0);
+    .reduce((acc, curr) => acc + parseFloat(curr.monto || 0), 0);
 
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f8fafc' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}>
       
-      {/* SECCIÓN DE ALERTAS FINANCIERAS CRÍTICAS */}
       {alerta && (
-        <div style={{
-          backgroundColor: '#fef2f2',
-          borderLeft: '4px solid #ef4444',
-          padding: '15px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          color: '#991b1b'
-        }}>
-          <AlertTriangle size={24} style={{ flexShrink: 0 }} />
-          <div>
-            <strong style={{ display: 'block' }}>¡Alerta de Margen de Riesgo!</strong>
-            <span style={{ fontSize: '0.9rem' }}>{alerta}</span>
-          </div>
+        <div style={{ backgroundColor: '#fef2f2', borderLeft: '4px solid #ef4444', padding: '15px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px', color: '#991b1b', fontSize: '0.9rem', fontWeight: '500' }}>
+          <AlertTriangle color="#ef4444" size={20} />
+          <span>{alerta}</span>
         </div>
       )}
 
-      {/* RECUADROS DE RESUMEN GLOBAL (ENTRADAS, SALIDAS Y PÉRDIDAS) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', marginBottom: '30px' }}>
+      {/* GRID DE BALANCES PRINCIPALES */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        {/* BALANCE GLOBAL CARD */}
+        <div style={{ backgroundColor: '#0f172a', color: '#ffffff', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Balance Total Disponible</p>
+          <h2 style={{ margin: '5px 0 0 0', fontSize: '2rem', fontWeight: 'bold', color: '#38bdf8' }}>
+            ${totalGlobal.toFixed(2)}
+          </h2>
+        </div>
+
+        {/* TARJETA DE TOTAL DE GASTOS */}
+        <div style={{ backgroundColor: '#fff5f5', border: '1px solid #fee2e2', padding: '20px', borderRadius: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <p style={{ margin: 0, fontSize: '0.85rem', color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: '600' }}>Total Gastos Asentados</p>
+          <h2 style={{ margin: '5px 0 0 0', fontSize: '2rem', fontWeight: 'bold', color: '#e11d48' }}>
+            ${totalGastosAcumulados.toFixed(2)}
+          </h2>
+        </div>
+      </div>
+
+      {/* SUB-BILLETERAS GRID */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
         
-        {/* Balance General */}
-        <div style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b', fontSize: '0.9rem' }}>
-            <span>Balance Total General</span>
+        <div style={{ backgroundColor: '#ffffff', padding: '15px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ backgroundColor: '#f0fdf4', padding: '10px', borderRadius: '8px' }}><Wallet color="#16a34a" size={20} /></div>
+          <div>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>Efectivo</p>
+            <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b' }}>${efectivo.toFixed(2)}</h4>
           </div>
-          <h2 style={{ fontSize: '1.8rem', margin: '10px 0 0 0', color: '#0f172a', fontWeight: 'bold' }}>
-            ${totalBalance.toFixed(2)}
-          </h2>
         </div>
 
-        {/* Ingresos + Remesas Recibidas */}
-        <div style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontSize: '0.9rem', fontWeight: '500' }}>
-            <span>Total Entradas</span>
-            <ArrowUpRight size={18} />
+        <div style={{ backgroundColor: '#ffffff', padding: '15px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ backgroundColor: '#eff6ff', padding: '10px', borderRadius: '8px' }}><Landmark color="#2563eb" size={20} /></div>
+          <div>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>{BANCO_1_NOMBRE}</p>
+            <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b' }}>${banco1.toFixed(2)}</h4>
           </div>
-          <h2 style={{ fontSize: '1.8rem', margin: '10px 0 0 0', color: '#16a34a', fontWeight: 'bold' }}>
-            ${totalIngresos.toFixed(2)}
-          </h2>
         </div>
 
-        {/* Gastos + Envíos */}
-        <div style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontSize: '0.9rem', fontWeight: '500' }}>
-            <span>Total Salidas</span>
-            <ArrowDownLeft size={18} />
+        <div style={{ backgroundColor: '#ffffff', padding: '15px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ backgroundColor: '#f8fafc', padding: '10px', borderRadius: '8px' }}><Landmark color="#0284c7" size={20} /></div>
+          <div>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>{BANCO_2_NOMBRE}</p>
+            <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b' }}>${banco2.toFixed(2)}</h4>
           </div>
-          <h2 style={{ fontSize: '1.8rem', margin: '10px 0 0 0', color: '#dc2626', fontWeight: 'bold' }}>
-            ${totalGastos.toFixed(2)}
-          </h2>
         </div>
 
-        {/* TARJETA PRO: CONTROL DE PÉRDIDAS POR COMISIONES / COBROS */}
-        <div style={{ backgroundColor: '#fff1f2', padding: '20px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #fecdd3' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: '#be123c', fontSize: '0.9rem', fontWeight: 'bold' }}>
-            <span>Pérdidas por Comisiones</span>
-            <DollarSign size={18} />
+        <div style={{ backgroundColor: '#ffffff', padding: '15px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ backgroundColor: '#fff7ed', padding: '10px', borderRadius: '8px' }}><Wallet color="#ea580c" size={20} /></div>
+          <div>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>Chivo Wallet</p>
+            <h4 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b' }}>${chivoWallet.toFixed(2)}</h4>
           </div>
-          <h2 style={{ fontSize: '1.8rem', margin: '10px 0 0 0', color: '#be123c', fontWeight: 'bold' }}>
-            ${totalComisiones.toFixed(2)}
-          </h2>
         </div>
 
       </div>
 
-      {/* SECCIÓN DE BILLETERAS / MONEDEROS REALES */}
-      <h3 style={{ color: '#1e293b', marginBottom: '15px', fontSize: '1.1rem', fontWeight: 'bold' }}>Mis Billeteras (Monederos)</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '10px' }}>
-        
-        {/* Efectivo Líquido */}
-        <div style={{ backgroundColor: '#0284c7', color: '#fff', padding: '20px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 4px 6px -1px rgba(2, 132, 199, 0.2)' }}>
-          <div style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', alignItems: 'center' }}>
-            <Wallet size={22} />
-          </div>
-          <div>
-            <span style={{ fontSize: '0.85rem', opacity: 0.9, display: 'block' }}>Efectivo</span>
-            <h4 style={{ margin: '3px 0 0 0', fontSize: '1.35rem', fontWeight: 'bold' }}>${billeteras.efectivo.toFixed(2)}</h4>
-          </div>
+      {/* TOTAL COMISIONES */}
+      <div style={{ backgroundColor: '#fff1f2', padding: '15px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ backgroundColor: '#ffe4e6', padding: '10px', borderRadius: '8px' }}><Percent color="#be123c" size={18} /></div>
+        <div>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: '#9f1239' }}>Pérdidas Absolutas por Comisión</p>
+          <h4 style={{ margin: 0, fontSize: '1.2rem', color: '#be123c', fontWeight: 'bold' }}>
+            ${(obtenerTotalComisiones() || 0).toFixed(2)}
+          </h4>
         </div>
-
-        {/* Cuenta Bancaria */}
-        <div style={{ backgroundColor: '#4f46e5', color: '#fff', padding: '20px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.2)' }}>
-          <div style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', alignItems: 'center' }}>
-            <Landmark size={22} />
-          </div>
-          <div>
-            <span style={{ fontSize: '0.85rem', opacity: 0.9, display: 'block' }}>Cuenta Bancaria</span>
-            <h4 style={{ margin: '3px 0 0 0', fontSize: '1.35rem', fontWeight: 'bold' }}>${billeteras.banco.toFixed(2)}</h4>
-          </div>
-        </div>
-
-        {/* Chivo Wallet / Criptoactivos */}
-        <div style={{ backgroundColor: '#f59e0b', color: '#fff', padding: '20px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 4px 6px -1px rgba(245, 158, 11, 0.2)' }}>
-          <div style={{ backgroundColor: 'rgba(255,255,255,0.2)', padding: '10px', borderRadius: '50%', display: 'flex', alignItems: 'center' }}>
-            <Bitcoin size={22} />
-          </div>
-          <div>
-            <span style={{ fontSize: '0.85rem', opacity: 0.9, display: 'block' }}>Chivo Wallet (BTC)</span>
-            <h4 style={{ margin: '3px 0 0 0', fontSize: '1.35rem', fontWeight: 'bold' }}>${billeteras.chivoWallet.toFixed(2)}</h4>
-          </div>
-        </div>
-
       </div>
+
     </div>
   );
 };

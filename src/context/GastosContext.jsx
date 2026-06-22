@@ -4,13 +4,13 @@ export const GastosContext = createContext();
 
 export const GastosProvider = ({ children }) => {
   
-  // 1. ESTADO DEL USUARIO: Recupera la sesión activa
+  // 1. ESTADO DEL USUARIO
   const [usuario, setUsuario] = useState(() => {
     const usuarioGuardado = localStorage.getItem('pro_usuario_activo');
     return usuarioGuardado ? JSON.parse(usuarioGuardado) : null;
   });
 
-  // 2. ESTADO DE TRANSACCIONES: Precarga los datos del usuario activo al arrancar
+  // 2. ESTADO DE TRANSACCIONES
   const [transacciones, setTransacciones] = useState(() => {
     const usuarioGuardado = localStorage.getItem('pro_usuario_activo');
     if (usuarioGuardado) {
@@ -21,23 +21,23 @@ export const GastosProvider = ({ children }) => {
     return [];
   });
   
-  // 3. ESTADO DE BILLETERAS: Inicializa los saldos correctos del usuario activo
+  // 3. ESTADO DE BILLETERAS
   const [billeteras, setBilleteras] = useState(() => {
     const usuarioGuardado = localStorage.getItem('pro_usuario_activo');
     if (usuarioGuardado) {
       const user = JSON.parse(usuarioGuardado);
       const bGuardadas = localStorage.getItem(`${user.nombre}_billeteras`);
-      return bGuardadas ? JSON.parse(bGuardadas) : { efectivo: 0, banco: 0, chivoWallet: 0 };
+      return bGuardadas ? JSON.parse(bGuardadas) : { efectivo: 0, banco1: 0, banco2: 0, chivoWallet: 0 };
     }
-    return { efectivo: 0, banco: 0, chivoWallet: 0 };
+    return { efectivo: 0, banco1: 0, banco2: 0, chivoWallet: 0 };
   });
 
   const [alerta, setAlerta] = useState(null);
   const LIMITE_GASTO_PORCENTAJE = 0.8; 
 
-  // GUARDADO EN CALIENTE: Sincroniza en LocalStorage evitando sobreescrituras en cero
+  // GUARDADO EN CALIENTE
   useEffect(() => {
-    if (usuario && (transacciones.length > 0 || billeteras.efectivo !== 0 || billeteras.banco !== 0 || billeteras.chivoWallet !== 0)) {
+    if (usuario) {
       localStorage.setItem(`${usuario.nombre}_transacciones`, JSON.stringify(transacciones));
       localStorage.setItem(`${usuario.nombre}_billeteras`, JSON.stringify(billeteras));
     }
@@ -51,7 +51,7 @@ export const GastosProvider = ({ children }) => {
     const bGuardadas = localStorage.getItem(`${nombreUsuario}_billeteras`);
     
     setTransacciones(tGuardadas ? JSON.parse(tGuardadas) : []);
-    setBilleteras(bGuardadas ? JSON.parse(bGuardadas) : { efectivo: 0, banco: 0, chivoWallet: 0 });
+    setBilleteras(bGuardadas ? JSON.parse(bGuardadas) : { efectivo: 0, banco1: 0, banco2: 0, chivoWallet: 0 });
     setUsuario(datosUsuario);
   };
 
@@ -84,7 +84,6 @@ export const GastosProvider = ({ children }) => {
     });
   };
 
-  // REVERSOR TOTAL + REDIRECCIÓN: Deshace por completo el flujo viejo y aplica el nuevo
   const editarTransaccion = (idTransaccion, transaccionCorregida) => {
     const original = transacciones.find(t => t.id === idTransaccion);
     if (!original) return;
@@ -92,7 +91,6 @@ export const GastosProvider = ({ children }) => {
     setBilleteras(prev => {
       const copia = { ...prev };
       
-      // STEP A: Deshacer contabilidad del flujo antiguo
       const montoOrig = parseFloat(original.monto);
       const comisionOrig = parseFloat(original.comision || 0);
 
@@ -107,7 +105,6 @@ export const GastosProvider = ({ children }) => {
         }
       }
 
-      // STEP B: Aplicar contabilidad del nuevo flujo corregido
       const montoNuevo = parseFloat(transaccionCorregida.monto);
       const comisionNueva = parseFloat(transaccionCorregida.comision || 0);
 
@@ -124,8 +121,41 @@ export const GastosProvider = ({ children }) => {
       return copia;
     });
 
-    // Mantener consistencia del ID y la fecha original
     setTransacciones(prev => prev.map(t => t.id === idTransaccion ? { ...t, ...transaccionCorregida } : t));
+  };
+
+  // 🔥 NUEVA FUNCIÓN: ELIMINAR Y REVERTIR MATEMÁTICAS
+  const eliminarTransaccion = (idTransaccion) => {
+    const objetivo = transacciones.find(t => t.id === idTransaccion);
+    if (!objetivo) return;
+
+    if (!window.confirm(`¿Estás seguro de que deseas eliminar la operación: "${objetivo.descripcion}"? Tu saldo se reajustará automáticamente.`)) {
+      return;
+    }
+
+    setBilleteras(prev => {
+      const copia = { ...prev };
+      const monto = parseFloat(objetivo.monto);
+      const comision = parseFloat(objetivo.comision || 0);
+
+      // Reversión matemática exacta al borrar
+      if (objetivo.tipo === 'ingreso' || objetivo.tipo === 'remesa') {
+        copia[objetivo.billetera] -= (monto - comision);
+      } 
+      else if (objetivo.tipo === 'gasto') {
+        copia[objetivo.billetera] += (monto + comision); // Devuelve el dinero gastado
+      } 
+      else if (objetivo.tipo === 'transferencia' || objetivo.tipo === 'envio_remesa') {
+        copia[objetivo.billeteraOrigen] += (monto + comision); // Devuelve al origen
+        if (objetivo.tipo === 'transferencia') {
+          copia[objetivo.billeteraDestino] -= monto; // Quita del destino
+        }
+      }
+      return copia;
+    });
+
+    // Filtramos para quitar el registro del estado
+    setTransacciones(prev => prev.filter(t => t.id !== idTransaccion));
   };
 
   useEffect(() => {
@@ -147,7 +177,7 @@ export const GastosProvider = ({ children }) => {
 
   return (
     <GastosContext.Provider value={{ 
-      transacciones, billeteras, agregarTransaccion, editarTransaccion, alerta, obtenerTotalComisiones,
+      transacciones, billeteras, agregarTransaccion, editarTransaccion, eliminarTransaccion, alerta, obtenerTotalComisiones,
       usuario, iniciarSesion, cerrarSesion 
     }}>
       {children}

@@ -95,7 +95,7 @@ export const Login = () => {
             <label style={{ display: 'block', marginBottom: '6px', color: '#334155', fontSize: '0.85rem', fontWeight: '600' }}>Usuario / Operador</label>
             <input 
               type="text" 
-              placeholder="Ej: DJ Larry SV" 
+              placeholder="Ej: Juan" 
               value={nombre} 
               onChange={(e) => setNombre(e.target.value)}
               style={{ width: '91%', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.95rem' }}
