@@ -35,7 +35,7 @@ export const GastosProvider = ({ children }) => {
   const [alerta, setAlerta] = useState(null);
   const LIMITE_GASTO_PORCENTAJE = 0.8; 
 
-  // GUARDADO EN CALIENTE
+  // GUARDADO AUTOMÁTICO EN LOCALSTORAGE
   useEffect(() => {
     if (usuario) {
       localStorage.setItem(`${usuario.nombre}_transacciones`, JSON.stringify(transacciones));
@@ -90,7 +90,6 @@ export const GastosProvider = ({ children }) => {
 
     setBilleteras(prev => {
       const copia = { ...prev };
-      
       const montoOrig = parseFloat(original.monto);
       const comisionOrig = parseFloat(original.comision || 0);
 
@@ -124,12 +123,11 @@ export const GastosProvider = ({ children }) => {
     setTransacciones(prev => prev.map(t => t.id === idTransaccion ? { ...t, ...transaccionCorregida } : t));
   };
 
-  // 🔥 NUEVA FUNCIÓN: ELIMINAR Y REVERTIR MATEMÁTICAS
   const eliminarTransaccion = (idTransaccion) => {
     const objetivo = transacciones.find(t => t.id === idTransaccion);
     if (!objetivo) return;
 
-    if (!window.confirm(`¿Estás seguro de que deseas eliminar la operación: "${objetivo.descripcion}"? Tu saldo se reajustará automáticamente.`)) {
+    if (!window.confirm(`¿Deseas eliminar la operación: "${objetivo.descripcion}"? Saldo reajustado.`)) {
       return;
     }
 
@@ -138,24 +136,56 @@ export const GastosProvider = ({ children }) => {
       const monto = parseFloat(objetivo.monto);
       const comision = parseFloat(objetivo.comision || 0);
 
-      // Reversión matemática exacta al borrar
       if (objetivo.tipo === 'ingreso' || objetivo.tipo === 'remesa') {
         copia[objetivo.billetera] -= (monto - comision);
       } 
       else if (objetivo.tipo === 'gasto') {
-        copia[objetivo.billetera] += (monto + comision); // Devuelve el dinero gastado
+        copia[objetivo.billetera] += (monto + comision);
       } 
       else if (objetivo.tipo === 'transferencia' || objetivo.tipo === 'envio_remesa') {
-        copia[objetivo.billeteraOrigen] += (monto + comision); // Devuelve al origen
+        copia[objetivo.billeteraOrigen] += (monto + comision);
         if (objetivo.tipo === 'transferencia') {
-          copia[objetivo.billeteraDestino] -= monto; // Quita del destino
+          copia[objetivo.billeteraDestino] -= monto;
         }
       }
       return copia;
     });
 
-    // Filtramos para quitar el registro del estado
     setTransacciones(prev => prev.filter(t => t.id !== idTransaccion));
+  };
+
+  // 💾 FUNCIÓN 1: CREAR Y DESCARGAR RESPALDO JSON
+  const exportarRespaldoJSON = () => {
+    if (!usuario) return alert("Inicia sesión primero.");
+    
+    const datosRespaldo = {
+      billeteras,
+      transacciones,
+      fechaRespaldo: new Date().toLocaleString()
+    };
+
+    // Convertimos el objeto de JS en un string de texto formateado
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(datosRespaldo, null, 2));
+    const descargarAnchor = document.createElement('a');
+    descargarAnchor.setAttribute("href", dataStr);
+    descargarAnchor.setAttribute("download", `respaldo_finanzas_${usuario.nombre}.json`);
+    document.body.appendChild(descargarAnchor);
+    descargarAnchor.click(); // Fuerza la descarga en el navegador
+    descargarAnchor.remove();
+  };
+
+  // 📥 FUNCIÓN 2: CARGAR RESPALDO JSON Y LEERLO
+  const importarRespaldoJSON = (objetoDatos) => {
+    if (!objetoDatos.billeteras || !objetoDatos.transacciones) {
+      alert("El archivo subido no contiene un formato de respaldo válido.");
+      return;
+    }
+    
+    if (window.confirm("¿Estás seguro? Esto reemplazará todo tu historial y saldos actuales con los datos del archivo.")) {
+      setBilleteras(objetoDatos.billeteras);
+      setTransacciones(objetoDatos.transacciones);
+      alert("¡Datos restaurados con éxito!");
+    }
   };
 
   useEffect(() => {
@@ -178,7 +208,7 @@ export const GastosProvider = ({ children }) => {
   return (
     <GastosContext.Provider value={{ 
       transacciones, billeteras, agregarTransaccion, editarTransaccion, eliminarTransaccion, alerta, obtenerTotalComisiones,
-      usuario, iniciarSesion, cerrarSesion 
+      usuario, iniciarSesion, cerrarSesion, exportarRespaldoJSON, importarRespaldoJSON
     }}>
       {children}
     </GastosContext.Provider>
